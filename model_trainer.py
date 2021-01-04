@@ -20,14 +20,14 @@ class ModelTrainer:
         with torch.no_grad():
             for i, batch in enumerate(val_loader):
                 lines, labels, line_lengths = batch
-                labels = labels.contiguous().view(-1)
+                # labels = labels.contiguous().view(-1)
 
-                predictions = self.model(lines.to(self.device))
-                b = predictions.size(1)
-                t = predictions.size(0)
-                predictions = predictions.view(b * t, -1)
+                # predictions = self.model(lines.to(self.device))
+                predictions = self.model(lines.to(self.device), line_lengths.int())
+                # b = predictions.size(1)
+                # t = predictions.size(0)
+                # predictions = predictions.view(b * t, -1)
 
-                # predictions = self.model(lines.to(self.device), line_lengths.int())
                 loss = self.criterion(torch.squeeze(predictions).float(), labels.to(self.device).float())
                 # loss = self.model.loss(predictions, labels.to(self.device), line_lengths.to(self.device))
                 running_val_loss += loss.item()
@@ -44,12 +44,12 @@ class ModelTrainer:
             lines, labels, line_lengths = batch
             # labels = labels.contiguous().view(-1)
 
-            predictions = self.model(lines.to(self.device))
+            # predictions = self.model(lines.to(self.device))
+            predictions = self.model(lines.to(self.device), line_lengths.int())
             # b = predictions.size(1)
             # t = predictions.size(0)
             # predictions = predictions.view(b * t, -1)
 
-            # predictions = self.model(lines.to(self.device), line_lengths.int())
             loss = self.criterion(torch.squeeze(predictions).float(), labels.to(self.device).float())
 
             # loss = self.model.loss(predictions, labels.to(self.device), line_lengths.to(self.device))
@@ -81,7 +81,7 @@ class ModelTrainer:
             print('-' * 50)
 
             weights_file = os.path.join(self.weights_dir,
-                                        'mixmodel_{}_1s_{:04d}_{:.4f}.pt'.format(self.model_name, epoch, avg_epoch_loss))
+                                        '{}_{:04d}_{:.4f}.pt'.format(self.model_name, epoch, avg_epoch_loss))
             torch.save(self.model.state_dict(), weights_file)
 
         return train_loss, val_loss
