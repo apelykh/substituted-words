@@ -67,9 +67,11 @@ class TextDataset(data.Dataset):
 
 
 if __name__ == '__main__':
-    d = TextDataset('./data', 'dev')
+    d = train_dataset = TextDataset(base_path='./data',
+                            split_name='train_small',
+                            max_len=None)
 
-    encoded_line, line_labels, line_len = d[123]
+    encoded_line, line_labels, line_len = d[0]
     print(encoded_line.size())
     print(line_labels.size())
     print(line_len)

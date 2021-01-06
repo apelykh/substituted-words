@@ -29,6 +29,7 @@ class ModelTrainer:
                 # predictions = predictions.view(b * t, -1)
 
                 loss = self.criterion(torch.squeeze(predictions).float(), labels.to(self.device).float())
+
                 # loss = self.model.loss(predictions, labels.to(self.device), line_lengths.to(self.device))
                 running_val_loss += loss.item()
 
@@ -68,7 +69,7 @@ class ModelTrainer:
         val_loss = []
 
         for epoch in range(start_epoch, start_epoch + num_epochs):
-            print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+            print('Epoch {}/{}'.format(epoch, start_epoch + num_epochs - 1))
             avg_epoch_loss = self._train_epoch(train_loader)
             train_loss.append(avg_epoch_loss)
             print('Epoch {} train loss: {:.4f}'.format(epoch, avg_epoch_loss))
