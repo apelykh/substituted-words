@@ -8,7 +8,10 @@ from torch.utils import data
 class TextDataset(data.Dataset):
     def __init__(self, base_path: str, split_name: str, max_len: int = None,
                  vocab: list = None, freq_threshold: int = 10):
-        self._read_gt_files(base_path, split_name)
+
+        src_text_path = os.path.join(base_path, '{}.tgt'.format(split_name))
+        with open(src_text_path, 'r') as f:
+            self.lines = f.readlines()
 
         if not max_len:
             line_lengths = [len(line.split(' ')) for line in self.lines]
@@ -23,15 +26,6 @@ class TextDataset(data.Dataset):
         self.unk_index = 1
         self.word2id['<UNK>'] = self.unk_index
         self.word2id['<PAD>'] = 0
-
-    def _read_gt_files(self, base_path, split_name):
-        src_text_path = os.path.join(base_path, '{}.src'.format(split_name))
-        with open(src_text_path, 'r') as f:
-            self.lines = f.readlines()
-
-        labels_path = os.path.join(base_path, '{}.lbl'.format(split_name))
-        with open(labels_path, 'r') as f:
-            self.labels = f.readlines()
 
     @staticmethod
     def preprocess_line(line: str) -> list:
@@ -48,15 +42,16 @@ class TextDataset(data.Dataset):
         line = self.preprocess_line(self.lines[index])
         line_len = min(len(line), self.max_len)
 
-        encoded_line = np.zeros(self.max_len)
+        # leaving 1 <PAD> token at the end as a target for the last word
+        encoded_line = np.zeros(self.max_len + 1)
         encoded_line[:line_len] = np.array([self.word2id.get(word, self.unk_index)
                                             for word in line[:line_len]])
 
-        line_labels = np.zeros(self.max_len)
-        line_labels[:line_len] = self.labels[index].split(' ')[:line_len]
+        targets = np.zeros(self.max_len + 1)
+        targets[:line_len] = encoded_line[1:line_len + 1]
 
         return torch.as_tensor(encoded_line, dtype=torch.long),\
-            torch.as_tensor(line_labels, dtype=torch.long),\
+            torch.as_tensor(targets, dtype=torch.long),\
             line_len
 
     def __len__(self) -> int:
@@ -68,10 +63,14 @@ class TextDataset(data.Dataset):
 
 if __name__ == '__main__':
     d = train_dataset = TextDataset(base_path='./data',
-                            split_name='train_small',
-                            max_len=None)
+                                    split_name='dev',
+                                    max_len=None,
+                                    vocab=None,
+                                    freq_threshold=10)
 
-    encoded_line, line_labels, line_len = d[0]
+    encoded_line, targets, line_len = d[0]
     print(encoded_line.size())
-    print(line_labels.size())
+    print(encoded_line)
+    print(targets.size())
+    print(targets)
     print(line_len)

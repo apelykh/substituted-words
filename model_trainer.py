@@ -1,5 +1,6 @@
 import os
 import torch
+from torch.autograd import Variable
 
 
 class ModelTrainer:
@@ -16,52 +17,60 @@ class ModelTrainer:
 
     def _validate_epoch(self, val_loader):
         running_val_loss = 0.0
+        state_h, state_c = self.model.init_states(init_method='zeros')
 
         with torch.no_grad():
             for i, batch in enumerate(val_loader):
-                lines, labels, line_lengths = batch
-                # labels = labels.contiguous().view(-1)
+                lines, targets, line_lengths = batch
+                # targets = targets.contiguous().view(-1)
 
-                # predictions = self.model(lines.to(self.device))
-                predictions = self.model(lines.to(self.device), line_lengths.int())
+                predictions, (state_h, state_c) = self.model(lines.to(self.device),
+                                                             line_lengths.int(),
+                                                             (state_h, state_c))
                 # b = predictions.size(1)
                 # t = predictions.size(0)
                 # predictions = predictions.view(b * t, -1)
 
-                loss = self.criterion(torch.squeeze(predictions).float(), labels.to(self.device).float())
+                predictions = predictions.permute(0, 2, 1)
 
-                # loss = self.model.loss(predictions, labels.to(self.device), line_lengths.to(self.device))
+                loss = self.criterion(predictions.float(), targets.to(self.device))
                 running_val_loss += loss.item()
 
         return running_val_loss / len(val_loader)
 
     def _train_epoch(self, train_loader):
-        running_loss = 0.0
+        with torch.autograd.set_detect_anomaly(True):
+            running_loss = 0.0
+            state_h, state_c = self.model.init_states(init_method='zeros')
 
-        for i, batch in enumerate(train_loader):
-            # print(batch['train_features'].shape)
-            self.optimizer.zero_grad()
+            for i, batch in enumerate(train_loader):
+                self.optimizer.zero_grad()
 
-            lines, labels, line_lengths = batch
-            # labels = labels.contiguous().view(-1)
+                lines, targets, line_lengths = batch
+                # targets = targets.contiguous().view(-1)
 
-            # predictions = self.model(lines.to(self.device))
-            predictions = self.model(lines.to(self.device), line_lengths.int())
-            # b = predictions.size(1)
-            # t = predictions.size(0)
-            # predictions = predictions.view(b * t, -1)
+                predictions, (state_h, state_c) = self.model(lines.to(self.device),
+                                                             line_lengths.int(),
+                                                             (state_h, state_c))
+                # b = predictions.size(1)
+                # t = predictions.size(0)
+                # predictions = predictions.view(b * t, -1)
 
-            loss = self.criterion(torch.squeeze(predictions).float(), labels.to(self.device).float())
+                state_h = state_h.detach()
+                state_c = state_c.detach()
 
-            # loss = self.model.loss(predictions, labels.to(self.device), line_lengths.to(self.device))
-            loss.backward()
-            self.optimizer.step()
+                # [batch_size, seq_len, num_classes] -> [batch_size, num_classes, seq_len]
+                predictions = predictions.permute(0, 2, 1)
 
-            every_n_batches = 30
-            if i % every_n_batches == every_n_batches - 1:
-                print('[%d/%4d] loss: %.3f' % (i + 1, len(train_loader), loss.item()))
+                loss = self.criterion(predictions.float(), targets.to(self.device))
+                loss.backward()
+                self.optimizer.step()
 
-            running_loss += loss.item()
+                every_n_batches = 30
+                if i % every_n_batches == every_n_batches - 1:
+                    print('[%d/%4d] loss: %.3f' % (i + 1, len(train_loader), loss.item()))
+
+                running_loss += loss.item()
         return running_loss / len(train_loader)
 
     def fit(self, train_loader, val_loader, start_epoch, num_epochs):
