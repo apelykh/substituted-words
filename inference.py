@@ -3,6 +3,7 @@ import torch
 import torch.nn.functional
 from dataset import TextDataset
 from model import WordSubstitutionDetector
+from kenlm_model import KenLMModel
 from utils import create_embedding_matrix
 
 device = 'cuda'
@@ -22,6 +23,13 @@ def run_model(model, model_state, device, line, word2id, unk_index=1):
         inv_scores = word_probs.take(encoded_line)
 
     return 1 - inv_scores
+
+
+def run_kenlm_model(model, line):
+    line = line.rstrip().lower()
+    probs = model(line)
+
+    return [1 - elem for elem in probs]
 
 
 def run_inference_on_file(src_file, results_file, model, word2id):
