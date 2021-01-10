@@ -1,7 +1,6 @@
 import os
 import torch
 import numpy as np
-# from seqeval.metrics import f1_score, accuracy_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from transformers import get_linear_schedule_with_warmup
 
@@ -53,41 +52,6 @@ class ModelTrainer:
 
         return total_val_loss / len(val_loader)
 
-    # -------------------------------------------------------------------------------------------
-    #     # Put the model into evaluation mode
-    #     model.eval()
-    #     # Reset the validation loss for this epoch.
-    #     eval_loss, eval_accuracy = 0, 0
-    #     predictions, gt = [], []
-    #
-    #     for batch in valid_dataloader:
-    #         batch = tuple(t.to(device) for t in batch)
-    #         b_input_ids, b_input_mask, b_labels = batch
-    #
-    #         with torch.no_grad():
-    #             outputs = model(b_input_ids, token_type_ids=None,
-    #                             attention_mask=b_input_mask, labels=b_labels)
-    #         # Move logits and labels to CPU
-    #         logits = outputs[1].detach().cpu().numpy()
-    #         label_ids = b_labels.to('cpu').numpy()
-    #
-    #         # Calculate the accuracy for this batch of test sentences.
-    #         eval_loss += outputs[0].mean().item()
-    #         predictions.extend([list(p) for p in np.argmax(logits, axis=2)])
-    #         gt.extend(label_ids)
-    #
-    #     eval_loss = eval_loss / len(valid_dataloader)
-    #     validation_loss_values.append(eval_loss)
-    #     print("Validation loss: {}".format(eval_loss))
-    #
-    #     pred_tags = [tag_values[p_i] for p, l in zip(predictions, gt)
-    #                  for p_i, l_i in zip(p, l) if tag_values[l_i] != "PAD"]
-    #     valid_tags = [tag_values[l_i] for l in gt
-    #                   for l_i in l if tag_values[l_i] != "PAD"]
-    #     print("Validation Accuracy: {}".format(accuracy_score(pred_tags, valid_tags)))
-    #     print("Validation F1-Score: {}".format(f1_score(pred_tags, valid_tags)))
-    # -------------------------------------------------------------------------------------------
-
     def _train_epoch(self, train_loader):
         total_loss = 0.0
 
@@ -97,9 +61,10 @@ class ModelTrainer:
             self.model.zero_grad()
 
             outputs = self.model(lines.to(self.device),
-                                token_type_ids=None,
-                                attention_mask=masks.to(self.device),
-                                labels=labels.to(self.device))
+                                 token_type_ids=None,
+                                 attention_mask=masks.to(self.device),
+                                 labels=labels.to(self.device),
+                                 class_weights=torch.tensor([1.0, 11.0]).to(self.device))
 
             loss = outputs[0]
             total_loss += loss.item()
@@ -128,12 +93,11 @@ class ModelTrainer:
         )
 
         for epoch in range(start_epoch, start_epoch + num_epochs):
-            # self.model.train()
-            # print('Epoch {}/{}'.format(epoch, start_epoch + num_epochs - 1))
-            # avg_epoch_loss = self._train_epoch(train_loader)
-            avg_epoch_loss = 0
-            # train_loss.append(avg_epoch_loss)
-            # print('Epoch {} train loss: {:.4f}'.format(epoch, avg_epoch_loss))
+            self.model.train()
+            print('Epoch {}/{}'.format(epoch, start_epoch + num_epochs - 1))
+            avg_epoch_loss = self._train_epoch(train_loader)
+            train_loss.append(avg_epoch_loss)
+            print('Epoch {} train loss: {:.4f}'.format(epoch, avg_epoch_loss))
 
             # ---------------------------------------------------------------
             # validation
