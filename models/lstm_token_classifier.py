@@ -10,10 +10,11 @@ from utils import create_embedding_matrix
 import time
 
 
-class WordSubstitutionDetector(nn.Module):
+class LSTMTokenClassifier(nn.Module):
 
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, bidirectional=True, pretrained_embeddings=None):
-        super(WordSubstitutionDetector, self).__init__()
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, bidirectional=True,
+                 pretrained_embeddings=None):
+        super(LSTMTokenClassifier, self).__init__()
 
         self.hidden_dim = hidden_dim
         self.batch_size = 512
@@ -114,10 +115,10 @@ if __name__ == '__main__':
 
     pretrained_embeddings = create_embedding_matrix('../glove.6B/glove.6B.100d.txt', word2id, len(word2id), 100)
 
-    model = WordSubstitutionDetector(vocab_size=len(vocab) + 2,
-                                     embedding_dim=100,
-                                     hidden_dim=200,
-                                     pretrained_embeddings=pretrained_embeddings).to(device)
+    model = LSTMTokenClassifier(vocab_size=len(vocab) + 2,
+                                embedding_dim=100,
+                                hidden_dim=200,
+                                pretrained_embeddings=pretrained_embeddings).to(device)
     optimizer = torch.optim.Adam(model.parameters(), weight_decay=1e-5)
     # optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
