@@ -16,14 +16,6 @@ class BERTTextDataset(data.Dataset):
         self.max_len = max_len
         print('[DATASET] Maximum line length: {}'.format(max_len))
 
-        # self.vocab = vocab if vocab else self._create_vocabulary(freq_threshold=freq_threshold)
-        # print('[DATASET] Vocabulary size: {}'.format(len(self.vocab)))
-        #
-        # self.word2id = {word: i + 2 for i, word in enumerate(self.vocab)}
-        # self.unk_index = 1
-        # self.word2id['<UNK>'] = self.unk_index
-        # self.word2id['<PAD>'] = 0
-
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased',
                                                        do_lower_case=True)
 
@@ -40,64 +32,65 @@ class BERTTextDataset(data.Dataset):
     def preprocess_line(line: str) -> list:
         return line.rstrip().lower().split(' ')
 
-    def _create_vocabulary(self, freq_threshold):
-        words = [word for line in self.lines for word in self.preprocess_line(line)]
-        word_counter = collections.Counter(words)
-        vocab = [word for word, freq in word_counter.items() if freq > freq_threshold]
+    def _adapt_labels_length(self, sequence: list, sequence_labels: list):
+        # TODO: properly account for special tokens in labels sequence;
+        # tokenized_sentence = []
+        labels = [0]
 
-        return vocab
-
-    def _tokenize_and_preserve_labels(self, sentence, text_labels):
-        tokenized_sentence = []
-        labels = []
-
-        for word, label in zip(sentence, text_labels):
+        for word, label in zip(sequence, sequence_labels):
             # Tokenize the word and count # of subwords the word is broken into
-            tokenized_word = self.tokenizer.tokenize(word)
-            tokenized_sentence.extend(tokenized_word)
+            tokenized_word = self.tokenizer(word, add_special_tokens=False)
+            # tokenized_sentence.extend(tokenized_word)
 
-            # Add the same label to the new list of labels `n_subwords` times
-            n_subwords = len(tokenized_word)
+            # Add the same label to the new list `n_subwords` times
+            n_subwords = len(tokenized_word['input_ids'])
             labels.extend([label] * n_subwords)
 
-        return tokenized_sentence, labels
+        labels.append(0)
+
+        return labels
 
     def __getitem__(self, index: int):
         line = self.preprocess_line(self.lines[index])
         labels = self.preprocess_line(self.labels[index])
 
         # some words are tokenized to subword units -> labels are extended to each subword part
-        tokenized_line, labels = self._tokenize_and_preserve_labels(line, labels)
+        labels = self._adapt_labels_length(line, labels)
 
-        line_len = min(len(tokenized_line), self.max_len)
+        encoded_input = self.tokenizer(line,
+                                       is_split_into_words=True,
+                                       padding='max_length',
+                                       truncation=True,
+                                       max_length=self.max_len,
+                                       add_special_tokens=True,
+                                       return_special_tokens_mask=True)
 
-        encoded_line = np.zeros(self.max_len)
-        encoded_line[:line_len] = np.array([self.tokenizer.convert_tokens_to_ids(token)
-                                            for token in tokenized_line[:line_len]])
+        line_len = min(len(labels), self.max_len)
+
+        # encoded_line = np.zeros(self.max_len)
+        # encoded_line[:line_len] = np.array([self.tokenizer.convert_tokens_to_ids(token)
+        #                                     for token in tokenized_line[:line_len]])
 
         line_labels = np.zeros(self.max_len)
         line_labels[:line_len] = labels[:line_len]
 
-        mask = np.zeros(self.max_len)
-        mask[:line_len] = 1.0
+        assert len(encoded_input["input_ids"]) == len(line_labels)
 
-        return torch.as_tensor(encoded_line, dtype=torch.long),\
+        return torch.as_tensor(encoded_input["input_ids"], dtype=torch.long),\
             torch.as_tensor(line_labels, dtype=torch.long),\
-            torch.as_tensor(mask)
+            torch.as_tensor(encoded_input['attention_mask'])
 
     def __len__(self) -> int:
         return len(self.lines)
 
-    # def get_vocab(self):
-    #     return self.vocab
-
 
 if __name__ == '__main__':
-    d = train_dataset = TextDataset(base_path='./data',
-                            split_name='train_small',
-                            max_len=100)
+    d = train_dataset = BERTTextDataset(base_path='./data',
+                                        split_name='train_small',
+                                        max_len=200)
 
-    encoded_line, line_labels, mask = d[58]
-    print(encoded_line)
-    print(line_labels)
-    print(mask)
+    for i in range(len(d)):
+        encoded_line, line_labels, mask = d[i]
+        print(encoded_line)
+        print(line_labels)
+        print(mask)
