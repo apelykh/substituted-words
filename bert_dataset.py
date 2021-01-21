@@ -85,7 +85,7 @@ class BERTTextDataset(data.Dataset):
 
 
 if __name__ == '__main__':
-    d = train_dataset = BERTTextDataset(base_path='./data',
+    d = BERTTextDataset(base_path='./data',
                                         split_name='train_small',
                                         max_len=200)
 
