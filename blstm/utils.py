@@ -1,5 +1,5 @@
 import numpy as np
-from dataset import TextDataset
+from blstm.dataset import TextDataset
 
 
 def create_embedding_matrix(glove_path, word2id, vocab_size, embed_dim):
@@ -23,8 +23,8 @@ def create_embedding_matrix(glove_path, word2id, vocab_size, embed_dim):
 
 
 if __name__ == '__main__':
-    train_dataset = TextDataset(base_path='./data',
+    train_dataset = TextDataset(base_path='../data',
                                 split_name='train_small',
                                 max_len=None)
     word2id = train_dataset.word2id
-    pretrained_embeddings = create_embedding_matrix('../glove.6B/glove.6B.100d.txt', word2id, len(word2id), 100)
+    pretrained_embeddings = create_embedding_matrix('../../glove.6B/glove.6B.100d.txt', word2id, len(word2id), 100)

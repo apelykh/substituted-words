@@ -1,13 +1,11 @@
 import torch
 from torch.autograd import Variable
 import torch.nn as nn
-import torch.nn.functional as F
 # -----------------------------------
-from dataset import TextDataset
+from blstm.dataset import TextDataset
 from torch.utils.data import DataLoader
 from model_trainer import ModelTrainer
 from utils import create_embedding_matrix
-import time
 
 
 class LSTMTokenClassifier(nn.Module):

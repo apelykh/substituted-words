@@ -1,8 +1,6 @@
-import unicodedata
 import torch.nn.functional
+from bert_dataset import BERTTextDataset
 from transformers import TokenClassificationPipeline, BertTokenizer, BertForTokenClassification
-
-device = 'cuda'
 
 
 def is_subtoken(word):
@@ -54,6 +52,7 @@ def detokenize_with_scores(orig_tokens, tokens, scores):
                 restored_text[-1] += tokens[j]
                 joined_scores[-1] = (joined_scores[-1] + scores[j]) / 2
             else:
+                # TODO: FIX!
                 raise NotImplementedError
 
             t = t[len(tokens[j]):]
@@ -61,6 +60,7 @@ def detokenize_with_scores(orig_tokens, tokens, scores):
         else:
             print(orig_tokens)
             print(tokens)
+            # TODO: FIX!
             raise ValueError
 
         if len(t) == 0:
@@ -70,24 +70,20 @@ def detokenize_with_scores(orig_tokens, tokens, scores):
     return restored_text, joined_scores
 
 
-def run_inference_on_file(src_file, results_file, pipeline, max_line_len=100):
+def prepare_lines(src_file, max_line_len):
     lines = []
 
     with open(src_file, 'r') as f:
         for i, line in enumerate(f):
-            line = line.strip().split(' ')
-
-            filtered_tokens = []
-            for token in line:
-                filtered_token = unicodedata.normalize('NFKD', token).encode('ascii', 'ignore').decode('ascii').lower()
-                if filtered_token == '':
-                    filtered_token = '[UNK]'
-                filtered_tokens.append(filtered_token)
-
-            assert (len(filtered_tokens) == len(line))
+            filtered_tokens = BERTTextDataset.preprocess_line(line)
 
             lines.append([filtered_tokens[l_i * max_line_len: (l_i + 1) * max_line_len]
                           for l_i in range(int(len(filtered_tokens) / max_line_len) + 1)])
+    return lines
+
+
+def run_inference_on_file(src_file, results_file, pipeline, max_line_len=100):
+    lines = prepare_lines(src_file, max_line_len)
 
     with open(results_file, 'w') as out:
         for i, line_chunks in enumerate(lines):
@@ -106,6 +102,7 @@ def run_inference_on_file(src_file, results_file, pipeline, max_line_len=100):
 
                 merged_tokens, merged_scores = detokenize_with_scores(line_chunk_tokens, tokens, scores)
 
+                # TODO: remove ugliness
                 assert(len(line_chunk_tokens) == len(merged_tokens))
 
                 line_scores.extend(merged_scores)
@@ -115,6 +112,8 @@ def run_inference_on_file(src_file, results_file, pipeline, max_line_len=100):
 
 
 if __name__ == '__main__':
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     model = BertForTokenClassification.from_pretrained(
         "bert-base-uncased",
         # 2 labels -> logits: (32, 200, 2)
@@ -129,4 +128,4 @@ if __name__ == '__main__':
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
 
     pipeline = TokenClassificationPipeline(model, tokenizer, device=0)
-    run_inference_on_file('./data/val.src', './data/val.bert.scores', pipeline)
+    run_inference_on_file('../data/val.src', './data/val.bert.scores', pipeline)

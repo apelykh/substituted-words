@@ -1,7 +1,7 @@
 import os
 import torch
 import numpy as np
-import collections
+import unicodedata
 from torch.utils import data
 from transformers import BertTokenizer
 
@@ -30,7 +30,19 @@ class BERTTextDataset(data.Dataset):
 
     @staticmethod
     def preprocess_line(line: str) -> list:
-        return line.rstrip().lower().split(' ')
+        filtered_tokens = []
+
+        for token in line.rstrip().split(' '):
+            filtered_token = unicodedata.normalize('NFKD', token).\
+                encode('ascii', errors='ignore').decode('ascii').lower()
+            if filtered_token == '':
+                filtered_token = '[UNK]'
+            filtered_tokens.append(filtered_token)
+
+        # TODO: remove ugliness
+        assert len(filtered_tokens) == len(line.split(' '))
+
+        return filtered_tokens
 
     def _adapt_labels_length(self, sequence: list, sequence_labels: list):
         # TODO: properly account for special tokens in labels sequence;
@@ -67,13 +79,10 @@ class BERTTextDataset(data.Dataset):
 
         line_len = min(len(labels), self.max_len)
 
-        # encoded_line = np.zeros(self.max_len)
-        # encoded_line[:line_len] = np.array([self.tokenizer.convert_tokens_to_ids(token)
-        #                                     for token in tokenized_line[:line_len]])
-
         line_labels = np.zeros(self.max_len)
         line_labels[:line_len] = labels[:line_len]
 
+        # TODO: remove ugliness
         assert len(encoded_input["input_ids"]) == len(line_labels)
 
         return torch.as_tensor(encoded_input["input_ids"], dtype=torch.long),\
@@ -85,12 +94,16 @@ class BERTTextDataset(data.Dataset):
 
 
 if __name__ == '__main__':
-    d = BERTTextDataset(base_path='./data',
-                                        split_name='train_small',
-                                        max_len=200)
+    d = BERTTextDataset(base_path='../data',
+                        split_name='dev',
+                        max_len=100)
 
     for i in range(len(d)):
+        if i % 2000 == 0:
+            print('{}/{}'.format(i, len(d)))
+
         encoded_line, line_labels, mask = d[i]
-        print(encoded_line)
-        print(line_labels)
-        print(mask)
+
+        # print(encoded_line)
+        # print(line_labels)
+        # print(mask)

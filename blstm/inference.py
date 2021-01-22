@@ -35,7 +35,7 @@ def run_inference_on_file(src_file, results_file, model, word2id):
 
 if __name__ == '__main__':
     # TODO: log word2id during train time and load here?
-    train_dataset = TextDataset(base_path='./data',
+    train_dataset = TextDataset(base_path='../data',
                                 split_name='dev',
                                 max_len=100,
                                 freq_threshold=8)
@@ -53,5 +53,5 @@ if __name__ == '__main__':
     weights = './weights/subst_detector_0019_0.1298.pt'
     model.load_state_dict(torch.load(weights, map_location=device))
 
-    src_file = './data/dev.src'
+    src_file = '../data/dev.src'
     run_inference_on_file(src_file, './data/dev.scores', model, train_dataset.word2id)
