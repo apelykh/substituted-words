@@ -2,8 +2,8 @@ import numpy as np
 import torch
 import torch.nn.functional
 from dataset import TextDataset
-from model import WordSubstitutionDetector
-from utils import create_embedding_matrix
+from lstm_token_classifier import LSTMTokenClassifier
+from utils import create_glove_matrix
 
 device = 'cuda'
 
@@ -25,7 +25,6 @@ def run_inference_on_file(src_file, results_file, model, word2id):
             if i % 500 == 0:
                 print('Line {}'.format(i))
 
-            # tokens = line.split(' ')
             scores = run_model(model, device, line, word2id)
             str_scores = ['{:.5f}'.format(elem) for elem in scores.squeeze().detach().cpu().numpy()]
             out.write(' '.join(str_scores) + '\n')
@@ -44,10 +43,10 @@ if __name__ == '__main__':
     # pretrained_embeddings = create_embedding_matrix('../glove.6B/glove.6B.100d.txt', word2id, len(word2id), 100)
 
     # TODO: serialize model with vocab and word2id
-    model = WordSubstitutionDetector(len(word2id),
-                                     embedding_dim=100,
-                                     hidden_dim=200,
-                                     pretrained_embeddings=None).to(device)
+    model = LSTMTokenClassifier(len(word2id),
+                                 embedding_dim=100,
+                                 hidden_dim=200,
+                                 pretrained_embeddings=None).to(device)
 
     # weights = './weights/mixmodel_subst_detector_1s_0029_0.0526.pt'
     weights = './weights/subst_detector_0019_0.1298.pt'

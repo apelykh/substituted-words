@@ -70,6 +70,7 @@ class ModelTrainer:
 
             loss = self.criterion(torch.squeeze(predictions).float(),
                                   labels.to(self.device).float())
+            total_loss += loss.item()
             loss.backward()
             self.optimizer.step()
 
@@ -77,7 +78,6 @@ class ModelTrainer:
             if i % every_n_batches == every_n_batches - 1:
                 print('[%d/%4d] loss: %.3f' % (i + 1, len(train_loader), loss.item()))
 
-            total_loss += loss.item()
         return total_loss / len(train_loader)
 
     def fit(self, train_loader, val_loader, start_epoch, num_epochs):
