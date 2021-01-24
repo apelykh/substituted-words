@@ -1,6 +1,5 @@
 import os
 import torch
-import numpy as np
 from eval import _f_measure
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from transformers import get_linear_schedule_with_warmup
@@ -19,49 +18,48 @@ class GeneralModelTrainer:
         self.criterion = criterion
         self.device = device
         self.max_grad_norm = 1.0
-        self.num_labels = 2
 
     def _validate_epoch(self, val_loader):
-        total_val_loss = 0.0
         predicted_labels = []
         true_labels = []
+        total_loss = 0.0
 
         for i, batch in enumerate(val_loader):
             batch = tuple(elem.to(self.device) for elem in batch)
-            lines, labels, masks = batch
+            batch_lines, batch_labels, batch_masks = batch
 
             with torch.no_grad():
-                outputs = self.model(lines, attention_mask=masks)
-            #                                      labels=labels)
+                outputs = self.model(batch_lines, attention_mask=batch_masks)
 
-            active_loss = masks.view(-1) == 1
+            bool_masks = batch_masks.view(-1) == 1
 
-            active_logits = outputs.logits.view(-1, self.num_labels)
-            active_labels = torch.where(
-                active_loss, labels.view(-1), torch.tensor(self.criterion.ignore_index).type_as(labels)
-            )
-            loss = self.criterion(active_logits, active_labels)
-            total_val_loss += loss.item()
-            #             total_val_loss += outputs.loss.item()
+            num_labels = outputs.logits.size()[-1]
+            logits = outputs.logits.view(-1, num_labels)
+            active_labels = torch.where(bool_masks, batch_labels.view(-1),
+                                        torch.tensor(self.criterion.ignore_index).type_as(batch_labels))
+            loss = self.criterion(logits, active_labels)
+            total_loss += loss.item()
 
-            # (32, 200, 2)
-            logits = outputs.logits.detach().cpu().numpy()
-            predictions = np.argmax(logits, axis=2)
-            batch_size, seq_len = predictions.shape
+            scores = torch.softmax(outputs.logits, dim=2)
+            scores = scores[:, :, 1]
+            active_scores = torch.masked_select(scores, batch_masks.bool())
+            active_labels = torch.masked_select(batch_labels, batch_masks.bool())
 
-            predicted_labels.extend(list(predictions.reshape(batch_size * seq_len).astype(np.int)))
-            t_labels = labels.to('cpu').numpy()
-            true_labels.extend(list(t_labels.reshape(batch_size * seq_len).astype(np.int)))
+            batch_predictions = (active_scores > 0.5).int().cpu().numpy()
+            predicted_labels.extend(list(batch_predictions))
 
+            active_labels = active_labels.detach().cpu().numpy()
+            true_labels.extend(list(active_labels))
+
+        accuracy = accuracy_score(true_labels, predicted_labels)
+        print("Validation Accuracy: {}".format(accuracy))
         precision = precision_score(true_labels, predicted_labels)
-        recall = recall_score(true_labels, predicted_labels)
-
-        print("Validation Accuracy: {}".format(accuracy_score(true_labels, predicted_labels)))
         print("Precision: {}".format(precision))
+        recall = recall_score(true_labels, predicted_labels)
         print("Recall: {}".format(recall))
         print("Validation F0.5-Score: {}".format(_f_measure(precision, recall, 0.5)))
 
-        return total_val_loss / len(val_loader)
+        return total_loss / len(val_loader)
 
     def _train_epoch(self, train_loader):
         total_loss = 0.0
@@ -69,26 +67,20 @@ class GeneralModelTrainer:
         for i, batch in enumerate(train_loader):
             batch = tuple(elem.to(self.device) for elem in batch)
             lines, labels, masks = batch
-            # lines = lines.to(self.device)
-            # labels = labels.to(self.device)
-            # masks = masks.to(self.device)
 
             # self.model.zero_grad()
             self.optimizer.zero_grad()
 
             outputs = self.model(lines, attention_mask=masks)
-            #                                  labels=labels)
-
-            #             loss = outputs[0]
 
             active_loss = masks.view(-1) == 1
 
-            active_logits = outputs.logits.view(-1, self.num_labels)
+            num_labels = outputs.logits.size()[-1]
+            active_logits = outputs.logits.view(-1, num_labels)
             active_labels = torch.where(
                 active_loss, labels.view(-1), torch.tensor(self.criterion.ignore_index).type_as(labels)
             )
             loss = self.criterion(active_logits, active_labels)
-
             total_loss += loss.item()
             loss.backward()
 
@@ -96,7 +88,6 @@ class GeneralModelTrainer:
             if i % every_n_batches == every_n_batches - 1:
                 print('[%d/%4d] loss: %.3f' % (i + 1, len(train_loader), loss.item()))
 
-            # Clip the norm of the gradient to help prevent the exploding gradients problem.
             torch.nn.utils.clip_grad_norm_(parameters=self.model.parameters(),
                                            max_norm=self.max_grad_norm)
             self.optimizer.step()
