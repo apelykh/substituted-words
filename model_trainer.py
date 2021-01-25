@@ -95,8 +95,20 @@ class ModelTrainer:
 
         return total_loss / len(train_loader)
 
-    def fit(self, train_loader: DataLoader, val_loader: DataLoader,
-            start_epoch: int, num_epochs: int):
+    def fit(self,
+            train_loader: DataLoader,
+            val_loader: DataLoader,
+            start_epoch: int,
+            num_epochs: int) -> tuple:
+        """
+        Fit self.model to provided data.
+
+        :param train_loader: train DataLoader;
+        :param val_loader: validation DataLoader;
+        :param start_epoch: index of the start epoch;
+        :param num_epochs: number of epochs to run training for;
+        :return: lists of train and validation loss values for each epoch;
+        """
 
         train_loss = []
         val_loss = []

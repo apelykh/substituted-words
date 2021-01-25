@@ -1,5 +1,5 @@
 import torch
-from bert_dataset import BertTextDataset
+from dataset import BertTextDataset
 from transformers import TokenClassificationPipeline, BertTokenizer, BertForTokenClassification
 
 
@@ -38,9 +38,6 @@ class BertSubstitutionsDetector:
             else:
                 joined_tokens[-1] = joined_tokens[-1] + tokens[i][2:]
                 joined_scores[-1] = (joined_scores[-1] + scores[i]) / 2
-
-        # TODO: remove
-        assert len(joined_scores) == len(joined_tokens)
 
         return joined_tokens, joined_scores
 
@@ -85,14 +82,12 @@ class BertSubstitutionsDetector:
                     restored_text[-1] += tokens[j]
                     joined_scores[-1] = (joined_scores[-1] + scores[j]) / 2
                 else:
-                    # TODO: remove?
-                    raise NotImplementedError
+                    raise RuntimeError
 
                 buffer = buffer[len(tokens[j]):]
                 j += 1
             else:
-                # TODO: remove?
-                raise ValueError
+                raise RuntimeError
 
             if len(buffer) == 0:
                 inside_word = False
@@ -102,6 +97,11 @@ class BertSubstitutionsDetector:
 
     @staticmethod
     def prepare_lines(src_file: str, max_line_len: int) -> list:
+        """
+        Separate each line from src_file into segments of length max_line_len.
+
+        :return: list of segments for each line in the source file;
+        """
         lines = []
 
         with open(src_file, 'r') as f:
@@ -141,9 +141,6 @@ class BertSubstitutionsDetector:
 
                     merged_tokens, merged_scores = self.restore_words_with_scores(line_chunk_tokens, tokens, scores)
 
-                    # TODO: remove
-                    assert(len(line_chunk_tokens) == len(merged_tokens))
-
                     line_scores.extend(merged_scores)
 
                 str_scores = ['{:.5f}'.format(score) for score in line_scores]
@@ -153,26 +150,24 @@ class BertSubstitutionsDetector:
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    model = BertForTokenClassification.from_pretrained(
-        "bert-base-uncased",
-        # 2 labels -> logits: (32, 200, 2)
-        num_labels=2,
-        output_attentions=False,
-        output_hidden_states=False
-    ).to(device)
+    model = BertForTokenClassification.\
+        from_pretrained('../assets/bert_subst_detector_0004_0.0491').to(device)
 
-    # weights = './weights/run3_after_bugfix/subst_detector_0002_0.0542.pt'   # F0.5 = 0.833
-    weights = './weights/run3_after_bugfix/subst_detector_0004_0.0491.pt'  # F0.5 = 0.84
-    # ------------------
-    # weights = './weights/run4/bert_subst_detector_0000_0.1008.pt'  # F0.5 = 0.8
-    # weights = './weights/run4/bert_subst_detector_0001_0.0717.pt'  # F0.5 = 0.818
-    # weights = './weights/run4/bert_subst_detector_0002_0.0545.pt'  # F0.5 = 0.833
-    model.load_state_dict(torch.load(weights, map_location=device))
+    # model = BertForTokenClassification.from_pretrained(
+    #     "bert-base-uncased",
+    #     # 2 labels -> logits: (32, 200, 2)
+    #     num_labels=2,
+    #     output_attentions=False,
+    #     output_hidden_states=False
+    # ).to(device)
+
+    # weights = '../weights/run3_after_bugfix/subst_detector_0004_0.0491.pt'  # F0.5 = 0.84
+    # model.load_state_dict(torch.load(weights, map_location=device))
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
 
     detector = BertSubstitutionsDetector(model, tokenizer)
     detector.run_inference_on_file(
-        '/home/apelykh/Projects/grammarly-test-task/substituted-words/data/val.src',
-        '/home/apelykh/Projects/grammarly-test-task/substituted-words/data/val.bert.scores2'
+        '../data/val.src',
+        '../data/val.scores.bert'
     )
