@@ -3,7 +3,7 @@ from bert_dataset import BertTextDataset
 from transformers import TokenClassificationPipeline, BertTokenizer, BertForTokenClassification
 
 
-class SubstitutionsDetector:
+class BertSubstitutionsDetector:
     """
     An inference abstraction that combines a trained model, tokenizer and a pipeline for token
     classification to run inference on files.
@@ -171,7 +171,7 @@ if __name__ == '__main__':
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
 
-    detector = SubstitutionsDetector(model, tokenizer)
+    detector = BertSubstitutionsDetector(model, tokenizer)
     detector.run_inference_on_file(
         '/home/apelykh/Projects/grammarly-test-task/substituted-words/data/val.src',
         '/home/apelykh/Projects/grammarly-test-task/substituted-words/data/val.bert.scores2'

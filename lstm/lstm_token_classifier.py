@@ -6,9 +6,10 @@ from lstm.dataset import TextDataset
 from torch.utils.data import DataLoader
 from lstm.utils import create_glove_matrix
 from transformers.modeling_outputs import TokenClassifierOutput
+# TODO: clean
 import sys
 sys.path.insert(0, '..')
-from model_trainer import GeneralModelTrainer
+from model_trainer import ModelTrainer
 
 
 class LSTMTokenClassifier(nn.Module):
@@ -28,6 +29,7 @@ class LSTMTokenClassifier(nn.Module):
         self.hidden_dim = hidden_dim
         self.batch_size = batch_size
         self.num_layers = num_layers
+        self.device = device
 
         if pretrained_embeddings is not None:
             self.word_embeddings = nn.Embedding.from_pretrained(torch.from_numpy(pretrained_embeddings).float(),
@@ -56,9 +58,8 @@ class LSTMTokenClassifier(nn.Module):
         hidden_state = torch.randn(self.num_directions * self.num_layers, self.batch_size, self.hidden_dim)
         cell_state = torch.randn(self.num_directions * self.num_layers, self.batch_size, self.hidden_dim)
 
-        if torch.cuda.is_available():
-            hidden_state = hidden_state.cuda()
-            cell_state = cell_state.cuda()
+        hidden_state = hidden_state.cuda().to(self.device)
+        cell_state = cell_state.cuda().to(self.device)
 
         hidden_state = Variable(hidden_state)
         cell_state = Variable(cell_state)
@@ -98,9 +99,8 @@ if __name__ == '__main__':
     data_dir = '../data'
     device = 'cuda'
 
-    d = TextDataset(base_path=data_dir, split_name='train_small', max_len=120)
-
-    d_loader = DataLoader(d,
+    train_dataset = TextDataset(base_path=data_dir, split_name='train_small', max_len=120)
+    train_loader = DataLoader(train_dataset,
                           batch_size=512,
                           shuffle=False,
                           num_workers=6,
@@ -109,7 +109,17 @@ if __name__ == '__main__':
                           timeout=0,
                           worker_init_fn=None)
 
-    word2id = d.word2id
+    word2id = train_dataset.word2id
+
+    val_dataset = TextDataset(base_path=data_dir, split_name='dev', max_len=120, vocab=train_dataset.vocab)
+    val_loader = DataLoader(val_dataset,
+                              batch_size=512,
+                              shuffle=False,
+                              num_workers=6,
+                              pin_memory=True,
+                              drop_last=False,
+                              timeout=0,
+                              worker_init_fn=None)
 
     pretrained_embeddings = create_glove_matrix('../../glove.6B/glove.6B.100d.txt',
                                                 word2id=word2id,
@@ -118,9 +128,11 @@ if __name__ == '__main__':
     model = LSTMTokenClassifier(vocab_size=len(word2id),
                                 embedding_dim=100,
                                 hidden_dim=200,
-                                pretrained_embeddings=pretrained_embeddings).to(device)
+                                pretrained_embeddings=pretrained_embeddings,
+                                device=device).to(device)
+
     optimizer = torch.optim.Adam(model.parameters(), weight_decay=1e-5)
 
-    loss_function = nn.CrossEntropyLoss()
-    trainer = GeneralModelTrainer(model, loss_function, optimizer, device)
-    trainer.fit(d_loader, d_loader, 0, 1)
+    loss_function = nn.CrossEntropyLoss(weight=torch.tensor([1.0, 11.0]).to(device))
+    trainer = ModelTrainer(model, loss_function, optimizer, device)
+    trainer.fit(train_loader, val_loader, 0, 20)

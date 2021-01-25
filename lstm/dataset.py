@@ -85,7 +85,7 @@ class TextDataset(data.Dataset):
 
         return torch.as_tensor(encoded_line, dtype=torch.long),\
             torch.as_tensor(line_labels, dtype=torch.long),\
-            torch.as_tensor(mask, dtype=torch.long)
+            torch.as_tensor(mask, dtype=torch.int64)
 
     def __len__(self) -> int:
         return len(self.lines)
@@ -95,12 +95,12 @@ class TextDataset(data.Dataset):
 
 
 if __name__ == '__main__':
-    d = train_dataset = TextDataset(base_path='./data',
+    d = train_dataset = TextDataset(base_path='../data',
                                     split_name='train_small',
                                     max_len=120,
                                     freq_threshold=10)
 
-    encoded_line, line_labels, mask = d[0]
+    encoded_line, line_labels, mask = d[230]
     print(encoded_line)
     print(line_labels)
     print(mask)

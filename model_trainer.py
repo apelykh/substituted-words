@@ -1,12 +1,13 @@
 import os
 import torch
+from torch.utils.data import DataLoader
 from eval import _f_measure
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from transformers import get_linear_schedule_with_warmup
 
 
-class GeneralModelTrainer:
-    def __init__(self, model, criterion, optimizer, device, model_prefix='bert_subst_detector'):
+class ModelTrainer:
+    def __init__(self, model, criterion, optimizer, device, model_prefix='subst_detector'):
         self.weights_dir = './weights'
         if not os.path.exists(self.weights_dir):
             os.makedirs(self.weights_dir)
@@ -19,7 +20,7 @@ class GeneralModelTrainer:
         self.device = device
         self.max_grad_norm = 1.0
 
-    def _validate_epoch(self, val_loader):
+    def _validate_epoch(self, val_loader: DataLoader):
         predicted_labels = []
         true_labels = []
         total_loss = 0.0
@@ -61,14 +62,13 @@ class GeneralModelTrainer:
 
         return total_loss / len(val_loader)
 
-    def _train_epoch(self, train_loader):
+    def _train_epoch(self, train_loader: DataLoader):
         total_loss = 0.0
 
         for i, batch in enumerate(train_loader):
             batch = tuple(elem.to(self.device) for elem in batch)
             lines, labels, masks = batch
 
-            # self.model.zero_grad()
             self.optimizer.zero_grad()
 
             outputs = self.model(lines, attention_mask=masks)
@@ -95,7 +95,9 @@ class GeneralModelTrainer:
 
         return total_loss / len(train_loader)
 
-    def fit(self, train_loader, val_loader, start_epoch, num_epochs):
+    def fit(self, train_loader: DataLoader, val_loader: DataLoader,
+            start_epoch: int, num_epochs: int):
+
         train_loss = []
         val_loss = []
 
