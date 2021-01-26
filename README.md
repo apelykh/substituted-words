@@ -51,7 +51,11 @@ A pre-trained [BertTokenizer](https://huggingface.co/transformers/model_doc/bert
 data processing while [TokenClassificationPipeline](https://huggingface.co/transformers/main_classes/pipelines.html?highlight=tokenclassificationpipeline#transformers.TokenClassificationPipeline)
 takes care of the model inference.
 
-The original training set was split into *dev* (10000 randomly selected sequences from the file) and *train* (the rest of the sequences). Both architectures were trained on the resulting *train* set while a *dev* set was used for model validation during training. *CrossEntropyLoss*, *AdamW* optimizer and a linear learning rate scheduler were used for training both models.
+The original training set was split into *dev* (10000 randomly selected sequences from the file) and *train* (the rest of the sequences). Both architectures were trained on the resulting *train* set while a *dev* set was used for model validation during training.
+
+* both models were trained with *CrossEntropyLoss*, *AdamW* optimizer and a linear learning rate scheduler;
+* [1.0, 11.0] class weights were used with *CrossEntropyLoss* due to the unballanced training set (around 11 times more negative examples);
+* non-ascii characters are removed from the input data during a pre-processing stage;
 
 
 ## Running the models
