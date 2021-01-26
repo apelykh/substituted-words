@@ -54,7 +54,14 @@ takes care of the model inference.
 Both architectures are trained on **train** data subset with *CrossEntropyLoss*, *AdamW* optimizer and a linear learning rate scheduler.
 
 
-## Running inference
+## Running the models
+
+* Before running the models, make sure that Python 3 is available (developed and tested using Python 3.8.5).
+* Package dependencies can be installed in a following way:
+```
+$ pip install -r requirements.txt
+```
+
 **LSTM inference:**
 
 [LSTM trained weights](https://drive.google.com/file/d/1yMbI4XNHF1lY0uKMeSUBzJnYCScKjUaQ/view?usp=sharing) should be downloaded into *./weights*
@@ -68,7 +75,8 @@ Both architectures are trained on **train** data subset with *CrossEntropyLoss*,
 
 [BERT trained weights](https://drive.google.com/file/d/1wsodiKWNmcponvVttC5OQ4v-h47daEwg/view?usp=sharing) should be unpacked to *./weights*
 
-    $ python bert/inference.py --src_file ./data/val.src --results_file ./data/val.scores.bert
+    $ python bert/inference.py --src_file ./data/test.src --results_file ./data/test.lbl
+
 
 
 ## Evaluation
@@ -103,3 +111,7 @@ F0.5 | **0.284** | **0.84**
 
 
 ## Discussion and further work
+
+Evidently, BERT is leading among the two explored models due to context-dependent embeddings, attention mechanism and much higher model capacity. These results align with the current state of the field where recurrent models have mostly been overtaken by transformers. However, it is likely that the proposed LSTM pipeline is able to show an improved performance after a more careful hyperparamter tuning and training process. Number of LSTM layers and their hidden size should be experimented with, as well as the way to initialize the embedding layer.
+
+A possible way to improve the current BERT model performance is to employ [RoBERTa: A Robustly Optimized BERT Pretraining Approach](https://arxiv.org/pdf/1907.11692.pdf) that reports considerably better results due to different pre-training procedure and data encoding pipeline. On top of that, more training data can be used for tuning the model as our end-task does not require manual annotations. Additional training data can be synthetically generated in huge amounts by randomly changing/replacing words.
