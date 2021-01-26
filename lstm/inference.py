@@ -1,4 +1,5 @@
 import pickle
+import argparse
 import numpy as np
 import torch
 import torch.nn.functional
@@ -50,6 +51,8 @@ class LSTMSubstitutionsDetector:
         :param src_file: path to a source file;
         :param results_file: path to a file where the resulting scores will be written;
         """
+        print('[.] Running LSTM inference...')
+
         out = open(results_file, 'w')
 
         with open(src_file, 'r') as f:
@@ -65,9 +68,15 @@ class LSTMSubstitutionsDetector:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--src_file', help='Path to a source file')
+    parser.add_argument("--results_file",
+                        help="Path to a file where the resulting scores will be written")
+    args = parser.parse_args()
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    with open('../assets/text_dataset_train_word2id_101945.pkl', 'rb') as f:
+    with open('./assets/text_dataset_train_word2id_101945.pkl', 'rb') as f:
         word2id = pickle.load(f)
 
     model = LSTMTokenClassifier(len(word2id),
@@ -75,9 +84,9 @@ if __name__ == '__main__':
                                 hidden_dim=200,
                                 pretrained_embeddings=None).to(device)
 
-    weights = '../weights/lstm_subst_detector_0009_0.4344.pt'  # F0.5 = 0.28
+    weights = './weights/lstm_subst_detector_0009_0.4344.pt'
     model.load_state_dict(torch.load(weights, map_location=device))
 
     detector = LSTMSubstitutionsDetector(model, word2id, device)
-    detector.run_inference_on_file(src_file='../data/val.src',
-                                   results_file='../data/val.scores.lstm')
+    detector.run_inference_on_file(src_file=args.src_file,
+                                   results_file=args.results_file)

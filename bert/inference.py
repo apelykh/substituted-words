@@ -1,3 +1,4 @@
+import argparse
 import torch
 from dataset import BertTextDataset
 from transformers import TokenClassificationPipeline, BertTokenizer, BertForTokenClassification
@@ -122,6 +123,8 @@ class BertSubstitutionsDetector:
         :param max_line_len: long lines will be separated into segments of length max_line_len
             before passing to the model;
         """
+        print('[.] Running BERT inference...')
+
         lines = self.prepare_lines(src_file, max_line_len)
 
         with open(results_file, 'w') as out:
@@ -148,26 +151,19 @@ class BertSubstitutionsDetector:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--src_file', help='Path to a source file')
+    parser.add_argument("--results_file",
+                        help="Path to a file where the resulting scores will be written")
+    args = parser.parse_args()
+
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = BertForTokenClassification.\
-        from_pretrained('../assets/bert_subst_detector_0004_0.0491').to(device)
-
-    # model = BertForTokenClassification.from_pretrained(
-    #     "bert-base-uncased",
-    #     # 2 labels -> logits: (32, 200, 2)
-    #     num_labels=2,
-    #     output_attentions=False,
-    #     output_hidden_states=False
-    # ).to(device)
-
-    # weights = '../weights/run3_after_bugfix/subst_detector_0004_0.0491.pt'  # F0.5 = 0.84
-    # model.load_state_dict(torch.load(weights, map_location=device))
+        from_pretrained('./assets/bert_subst_detector_0004_0.0491').to(device)
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
 
     detector = BertSubstitutionsDetector(model, tokenizer)
-    detector.run_inference_on_file(
-        '../data/val.src',
-        '../data/val.scores.bert'
-    )
+    detector.run_inference_on_file(src_file=args.src_file,
+                                   results_file=args.results_file)
