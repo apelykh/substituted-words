@@ -51,7 +51,7 @@ A pre-trained [BertTokenizer](https://huggingface.co/transformers/model_doc/bert
 data processing while [TokenClassificationPipeline](https://huggingface.co/transformers/main_classes/pipelines.html?highlight=tokenclassificationpipeline#transformers.TokenClassificationPipeline)
 takes care of the model inference.
 
-Both architectures are trained on **train** data subset with *CrossEntropyLoss*, *AdamW* optimizer and a linear learning rate scheduler.
+The original training set was split into *dev* (10000 randomly selected sequences from the file) and *train* (the rest of the sequences). Both architectures were trained on the resulting *train* set while a *dev* set was used for model validation during training. *CrossEntropyLoss*, *AdamW* optimizer and a linear learning rate scheduler were used for training both models.
 
 
 ## Running the models
@@ -97,7 +97,7 @@ To run evaluation:
 
 ## Results
 
-The following results on **val** subset were achieved:
+The following results on *val* subset were achieved:
 
  metric | LSTM | BERT
 ------- | ---- | ---- 
