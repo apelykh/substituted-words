@@ -85,7 +85,7 @@ class BertSubstitutionsDetector:
                 else:
                     raise RuntimeError
 
-                buffer = buffer[len(tokens[j]):]
+                buffer = buffer[len(tokens[j]):].strip()
                 j += 1
             else:
                 raise RuntimeError
